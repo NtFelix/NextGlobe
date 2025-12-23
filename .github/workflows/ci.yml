@@ -1,0 +1,221 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (patch, minor, major)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ============================================
+  # CI: Build and verify (runs on all events)
+  # ============================================
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build npm package
+        run: npm run build
+
+      - name: Verify TypeScript declarations
+        run: |
+          echo "✅ Checking TypeScript declarations..."
+          test -f dist/index.d.ts && echo "index.d.ts exists" || exit 1
+          test -f dist/index.d.mts && echo "index.d.mts exists" || exit 1
+
+      - name: Package dry-run
+        run: npm pack --dry-run
+
+  # ============================================
+  # Deploy: GitHub Pages demo site (on main only)
+  # ============================================
+  deploy-pages:
+    name: Deploy Demo
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          static_site_generator: next
+
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js demo
+        run: npx next build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ============================================
+  # Release: Version bump, GitHub release, npm publish
+  # ============================================
+  release:
+    name: Release & Publish
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Determine version bump type
+        id: version-type
+        run: |
+          # Check for manual input first
+          if [ "${{ inputs.release_type }}" != "" ] && [ "${{ inputs.release_type }}" != "auto" ]; then
+            echo "type=${{ inputs.release_type }}" >> $GITHUB_OUTPUT
+            echo "Using manual release type: ${{ inputs.release_type }}"
+            exit 0
+          fi
+          
+          # Get the commit message
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+          
+          # Determine version bump based on conventional commits
+          if echo "$COMMIT_MSG" | grep -qiE "^(breaking|BREAKING CHANGE):"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif echo "$COMMIT_MSG" | grep -qiE "^feat(\(.+\))?:"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version
+        id: bump
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Bump version (no git tag, we'll create it manually)
+          npm version ${{ steps.version-type.outputs.type }} --no-git-tag-version
+          
+          # Get new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore(release): v${{ steps.bump.outputs.version }} [skip ci]"
+          git push
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}
+          name: v${{ steps.bump.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | v${{ steps.bump.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Bump Type** | ${{ steps.version-type.outputs.type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **npm** | [nextglobe@${{ steps.bump.outputs.version }}](https://www.npmjs.com/package/nextglobe) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **GitHub Release** | [v${{ steps.bump.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.bump.outputs.version }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Demo** | [GitHub Pages](https://${{ github.repository_owner }}.github.io/nextglobe) |" >> $GITHUB_STEP_SUMMARY

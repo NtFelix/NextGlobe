@@ -1,23 +1,55 @@
 {
   "name": "nextglobe",
   "version": "0.1.0",
-  "private": true,
+  "description": "A beautiful interactive 3D globe component for Next.js using MapLibre GL",
+  "author": "Felix Plant",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ntfelix/nextglobe"
+  },
+  "keywords": [
+    "nextjs",
+    "globe",
+    "3d",
+    "map",
+    "maplibre",
+    "react",
+    "interactive",
+    "earth",
+    "visualization"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint",
+    "prepublishOnly": "npm run build",
+    "demo": "next dev --port 3001"
+  },
+  "peerDependencies": {
+    "next": ">=13.0.0",
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.4.2",
-    "@types/three": "^0.182.0",
-    "maplibre-gl": "^5.15.0",
-    "next": "16.1.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-globe.gl": "^2.37.0",
-    "three": "^0.182.0"
+    "maplibre-gl": "^5.15.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -26,7 +58,12 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
+    "next": "16.1.0",
+    "postcss": "^8",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "tailwindcss": "^4",
+    "tsup": "^8.3.5",
     "typescript": "^5"
   }
 }

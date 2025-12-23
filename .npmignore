@@ -1,0 +1,35 @@
+# Source files (only dist is published)
+src/
+app/
+public/
+
+# Config files
+tsconfig.json
+tsup.config.ts
+next.config.ts
+postcss.config.mjs
+eslint.config.mjs
+
+# Development files
+.git
+.github
+.next
+.gitignore
+.gitattributes
+*.log
+*.lock
+
+# Test files
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db

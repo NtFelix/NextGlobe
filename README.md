@@ -1,38 +1,167 @@
-# NextGlobe
+# NextGlobe 🌍
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+A beautiful, interactive 3D globe component for Next.js applications. Built with MapLibre GL and optimized for the Next.js ecosystem.
 
-## Getting Started
+[![npm version](https://img.shields.io/npm/v/nextglobe.svg)](https://www.npmjs.com/package/nextglobe)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-First, run the development server:
+## Features
+
+- 🌐 **Beautiful 3D Globe** - Stunning visual style with atmospheric glow effects
+- ⚡ **Next.js Optimized** - Built with `'use client'` and SSR-safe dynamic imports
+- 🎨 **Customizable** - Adjust center, zoom, pitch, and more
+- 📦 **TypeScript** - Full type definitions included
+- 🗺️ **MapLibre GL** - Powered by the open-source MapLibre GL library
+- 🆓 **Free Map Tiles** - Uses OpenFreeMap and Esri basemaps
+
+## Installation
 
 ```bash
-npm run dev
+npm install nextglobe
 # or
-yarn dev
+yarn add nextglobe
 # or
-pnpm dev
-# or
-bun dev
+pnpm add nextglobe
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Basic Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```tsx
+import { GlobeScene } from 'nextglobe';
 
-## Learn More
+export default function Page() {
+  return <GlobeScene />;
+}
+```
 
-To learn more about Next.js, take a look at the following resources:
+### With Custom Options
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```tsx
+import { Globe } from 'nextglobe';
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+export default function Page() {
+  return (
+    <div className="h-screen w-full">
+      <Globe
+        center={[0, 20]}
+        zoom={2.5}
+        pitch={30}
+        onLoad={(map) => console.log('Globe loaded!', map)}
+      />
+    </div>
+  );
+}
+```
 
-## Deploy on Vercel
+## Components
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### `<GlobeScene />`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+A full-screen wrapper component with SSR-safe dynamic loading. **Recommended for most use cases.**
+
+```tsx
+import { GlobeScene } from 'nextglobe';
+
+<GlobeScene 
+  height="100vh"
+  center={[-74, 40.7]} // New York
+  zoom={3}
+/>
+```
+
+### `<Globe />`
+
+The core globe component. Use this when you need more control over the container.
+
+```tsx
+import { Globe } from 'nextglobe';
+
+<div className="h-[600px] w-full">
+  <Globe 
+    center={[139.7, 35.7]} // Tokyo
+    zoom={4}
+    onLoad={(map) => {
+      // Access the MapLibre map instance
+      map.flyTo({ center: [2.3, 48.9], zoom: 5 });
+    }}
+  />
+</div>
+```
+
+## Props
+
+### GlobeProps
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `center` | `[number, number]` | `[-95, 38]` | Initial center coordinates [longitude, latitude] |
+| `zoom` | `number` | `2.2` | Initial zoom level (0-22) |
+| `pitch` | `number` | `0` | Initial pitch angle in degrees (0-85) |
+| `maxPitch` | `number` | `85` | Maximum pitch angle |
+| `antialias` | `boolean` | `true` | Enable antialiasing |
+| `showStatus` | `boolean` | `true` | Show loading status overlay |
+| `className` | `string` | `''` | Custom CSS class for the container |
+| `onLoad` | `(map: Map) => void` | - | Callback when the map is loaded |
+| `onError` | `(error: Error) => void` | - | Callback when an error occurs |
+
+### GlobeSceneProps
+
+Extends `GlobeProps` with:
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `height` | `string` | `'100vh'` | Height of the container |
+
+## Styling
+
+The globe uses Tailwind CSS classes by default. Make sure you have Tailwind CSS configured in your Next.js project.
+
+If you're not using Tailwind, you can override styles using the `className` prop or by targeting the container element.
+
+## Examples
+
+### Fly to a Location
+
+```tsx
+import { Globe } from 'nextglobe';
+import { useState } from 'react';
+
+export default function InteractiveGlobe() {
+  const [map, setMap] = useState<maplibregl.Map | null>(null);
+
+  const flyToParis = () => {
+    map?.flyTo({
+      center: [2.35, 48.85],
+      zoom: 6,
+      duration: 2000
+    });
+  };
+
+  return (
+    <div className="relative h-screen">
+      <Globe onLoad={setMap} />
+      <button 
+        onClick={flyToParis}
+        className="absolute top-4 right-4 px-4 py-2 bg-white rounded-lg"
+      >
+        Fly to Paris
+      </button>
+    </div>
+  );
+}
+```
+
+## Requirements
+
+- Next.js 13.0.0 or higher
+- React 18.0.0 or higher
+
+## License
+
+MIT © Felix Plant
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

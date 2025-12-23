@@ -5,6 +5,30 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 /**
+ * Props for the Globe component
+ */
+export interface GlobeProps {
+    /** Initial center coordinates [longitude, latitude]. Default: [-95, 38] (Central US) */
+    center?: [number, number];
+    /** Initial zoom level (0-22). Default: 2.2 */
+    zoom?: number;
+    /** Initial pitch angle in degrees (0-85). Default: 0 */
+    pitch?: number;
+    /** Maximum pitch angle. Default: 85 */
+    maxPitch?: number;
+    /** Enable antialiasing. Default: true */
+    antialias?: boolean;
+    /** Show loading status overlay. Default: true */
+    showStatus?: boolean;
+    /** Custom CSS class for the container */
+    className?: string;
+    /** Callback when the map is loaded */
+    onLoad?: (map: maplibregl.Map) => void;
+    /** Callback when an error occurs */
+    onError?: (error: Error) => void;
+}
+
+/**
  * Custom style matching the reference image style:
  * - Playful, illustrated aesthetic (Google Maps / Apple Maps style)
  * - Soft pastel greens for land, soft cyan/blue for water
@@ -175,7 +199,33 @@ const PLAYFUL_GLOBE_STYLE = {
     }
 };
 
-export default function Earth() {
+/**
+ * A beautiful interactive 3D globe component for Next.js
+ * 
+ * @example
+ * ```tsx
+ * import { Globe } from 'nextglobe';
+ * 
+ * export default function Page() {
+ *   return (
+ *     <div className="h-screen">
+ *       <Globe center={[0, 20]} zoom={2} />
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export default function Earth({
+    center = [-95, 38],
+    zoom = 2.2,
+    pitch = 0,
+    maxPitch = 85,
+    antialias = true,
+    showStatus = true,
+    className = '',
+    onLoad,
+    onError,
+}: GlobeProps) {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [status, setStatus] = useState<string>('Initializing Globe...');
@@ -190,21 +240,21 @@ export default function Earth() {
             const map = new maplibregl.Map({
                 container: container,
                 style: PLAYFUL_GLOBE_STYLE as any,
-                center: [-95, 38], // Central US
-                zoom: 2.2,
-                pitch: 0,
+                center: center,
+                zoom: zoom,
+                pitch: pitch,
                 projection: { type: 'globe' },
                 attributionControl: false,
                 renderWorldCopies: false,
-                maxPitch: 85,
-                antialias: true
+                maxPitch: maxPitch,
+                antialias: antialias
             } as any);
 
             mapRef.current = map;
 
             map.on('load', () => {
                 setStatus('');
-                console.log("Playful Globe Style Loaded");
+                console.log("NextGlobe: Globe loaded successfully");
 
                 // Ensure globe projection if not already active
                 // @ts-ignore
@@ -212,20 +262,24 @@ export default function Earth() {
                     // @ts-ignore
                     map.setProjection({ type: 'globe' });
                 }
+
+                onLoad?.(map);
             });
 
             map.on('error', (e) => {
-                console.error('Map Error:', e);
+                console.error('NextGlobe Error:', e);
                 // Ignore non-critical resource errors
                 if (e.error?.message &&
                     !e.error.message.includes('glyph') &&
                     !e.error.message.includes('sprite')) {
                     setStatus(`Error: ${e.error.message}`);
+                    onError?.(new Error(e.error.message));
                 }
             });
 
         } catch (error: any) {
             setStatus(`Initialization Failed: ${error.message}`);
+            onError?.(error);
         }
 
         return () => {
@@ -234,12 +288,12 @@ export default function Earth() {
                 mapRef.current = null;
             }
         };
-    }, []);
+    }, [center, zoom, pitch, maxPitch, antialias, onLoad, onError]);
 
     return (
-        <div className="w-full h-full relative bg-[#05050a]">
+        <div className={`w-full h-full relative bg-[#05050a] ${className}`}>
             {/* Status Overlay */}
-            {status && (
+            {showStatus && status && (
                 <div className="absolute inset-0 flex items-center justify-center z-50 bg-[#05050a] text-white/50 font-mono text-sm tracking-widest uppercase">
                     <div className="animate-pulse">{status}</div>
                 </div>
