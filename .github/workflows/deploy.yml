@@ -1,28 +1,24 @@
-# Workflow for building and deploying a Next.js site to GitHub Pages
-name: Deploy Next.js to GitHub Pages
+name: Build & Deploy
 
 on:
-  # Runs on pushes to the main branch
   push:
     branches: ["main"]
-
-  # Allows manual trigger from the Actions tab
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
-# Sets permissions for GitHub Pages deployment
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Build job
   build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,8 +55,9 @@ jobs:
         with:
           path: ./out
 
-  # Deployment job
   deploy:
+    name: Deploy
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -70,3 +67,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
