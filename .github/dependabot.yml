@@ -1,0 +1,112 @@
+version: 2
+
+registries:
+  npm-npmjs:
+    type: npm-registry
+    url: https://registry.npmjs.org
+    replaces-base: true
+
+updates:
+  # npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 10
+    versioning-strategy: "increase"
+    registries:
+      - npm-npmjs
+    groups:
+      # Group React ecosystem updates together
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group Next.js related updates
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group Three.js related updates
+      threejs:
+        patterns:
+          - "three"
+          - "@types/three"
+          - "@react-three/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group TypeScript and types
+      typescript:
+        patterns:
+          - "typescript"
+          - "@types/node"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group Tailwind CSS related updates
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group ESLint related updates
+      eslint:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    reviewers:
+      - "felixplant"
+    assignees:
+      - "felixplant"
+
+  # GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(actions)"
+      include: "scope"
+    reviewers:
+      - "felixplant"
+    assignees:
+      - "felixplant"
+    groups:
+      # Group all GitHub Actions updates
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
