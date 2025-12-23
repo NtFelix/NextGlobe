@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discussions
+    url: https://github.com/YOUR_USERNAME/NextGlobe/discussions
+    about: For questions, ideas, and general discussions
+  - name: Documentation
+    url: https://github.com/YOUR_USERNAME/NextGlobe#readme
+    about: Check out the documentation for help
