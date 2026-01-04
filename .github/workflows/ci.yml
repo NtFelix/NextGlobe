@@ -1,10 +1,13 @@
 name: CI/CD
 
 on:
+  # Build runs on ALL branches for dev purposes
   push:
-    branches: [main]
+    branches: ['**']
+  # PRs to main get full CI
   pull_request:
     branches: [main]
+  # Manual trigger for controlled releases
   workflow_dispatch:
     inputs:
       release_type:
