@@ -5,6 +5,15 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 /**
+ * Extended MapOptions to support globe projection (not yet in official types)
+ */
+interface ExtendedMapOptions extends Omit<maplibregl.MapOptions, 'container'> {
+    container: HTMLElement | string;
+    projection?: { type: string };
+    antialias?: boolean;
+}
+
+/**
  * Props for the Globe component
  */
 export interface GlobeProps {
@@ -229,6 +238,7 @@ export default function Earth({
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [status, setStatus] = useState<string>('Initializing Globe...');
+    const initErrorRef = useRef<Error | null>(null);
 
     useEffect(() => {
         if (mapRef.current) return;
@@ -236,10 +246,16 @@ export default function Earth({
         const container = mapContainer.current;
         if (!container) return;
 
+        // Reset error ref
+        initErrorRef.current = null;
+
+        let map: maplibregl.Map | null = null;
+
         try {
-            const map = new maplibregl.Map({
+            // Create options with globe projection support
+            const mapOptions: ExtendedMapOptions = {
                 container: container,
-                style: PLAYFUL_GLOBE_STYLE as any,
+                style: PLAYFUL_GLOBE_STYLE as maplibregl.StyleSpecification,
                 center: center,
                 zoom: zoom,
                 pitch: pitch,
@@ -248,7 +264,8 @@ export default function Earth({
                 renderWorldCopies: false,
                 maxPitch: maxPitch,
                 antialias: antialias
-            } as any);
+            };
+            map = new maplibregl.Map(mapOptions as maplibregl.MapOptions);
 
             mapRef.current = map;
 
@@ -257,13 +274,12 @@ export default function Earth({
                 console.log("NextGlobe: Globe loaded successfully");
 
                 // Ensure globe projection if not already active
-                // @ts-ignore
-                if (map.setProjection) {
-                    // @ts-ignore
-                    map.setProjection({ type: 'globe' });
+                const mapInstance = map as maplibregl.Map & { setProjection?: (spec: { type: string }) => void };
+                if (mapInstance.setProjection) {
+                    mapInstance.setProjection({ type: 'globe' });
                 }
 
-                onLoad?.(map);
+                onLoad?.(map!);
             });
 
             map.on('error', (e) => {
@@ -277,9 +293,14 @@ export default function Earth({
                 }
             });
 
-        } catch (error: any) {
-            setStatus(`Initialization Failed: ${error.message}`);
-            onError?.(error);
+        } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            initErrorRef.current = error;
+            // Defer state update to avoid setState in effect body
+            queueMicrotask(() => {
+                setStatus(`Initialization Failed: ${error.message}`);
+                onError?.(error);
+            });
         }
 
         return () => {
